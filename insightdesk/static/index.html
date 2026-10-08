@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InsightDesk — reputation intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="login" id="login" hidden>
+  <form id="loginForm" class="login-card">
+    <div class="login-brand"><span class="mark" aria-hidden="true"></span>InsightDesk</div>
+    <h1>Sign in</h1>
+    <label>Password<input type="password" id="loginPw" autocomplete="current-password" required autofocus></label>
+    <p class="login-err" id="loginErr" role="alert"></p>
+    <button class="primary" id="loginBtn" type="submit">Sign in</button>
+  </form>
+</div>
+<div class="shell">
+  <nav class="rail" aria-label="Main">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>InsightDesk</div>
+    <ol class="steps">
+      <li><button data-view="data" class="on"><span class="n">1</span>Data</button></li>
+      <li><button data-view="report"><span class="n">2</span>Report</button></li>
+      <li><button data-view="template"><span class="n">3</span>Report from a sample</button></li>
+      <li><button data-view="ask"><span class="n">4</span>Ask the data</button></li>
+    </ol>
+    <button data-view="settings" class="settings-link">Settings</button>
+    <p class="rail-foot" id="railFoot"></p>
+    <button id="logoutBtn" class="logout" hidden>Sign out</button>
+  </nav>
+
+  <div class="main">
+    <header class="topbar">
+      <label class="ds-pick">Dataset
+        <select id="dsSelect" aria-label="Active dataset"><option value="">No dataset yet</option></select>
+      </label>
+    </header>
+
+    <div class="eph" id="ephNote" hidden role="note"><strong>Free hosting:</strong> uploads and reports are cleared when the app restarts or sleeps (about 15 minutes without use). Download reports you want to keep, and re-upload data when needed. API keys and the password are not affected.</div>
+
+    <!-- ============================ DATA -->
+    <section class="view" id="view-data">
+      <h1>Data</h1>
+      <p class="lede">Upload a social-listening or media export. It is cleaned, scored and analysed automatically.</p>
+
+      <div class="upload" id="dropzone" tabindex="0">
+        <div>
+          <strong>Drop a file here</strong> or <label class="linkish">choose one<input type="file" id="dataFile" accept=".csv,.xlsx,.xls,.xlsm,.json,.txt,.md,.tsv" hidden></label>
+          <div class="hint" id="uploadHint">CSV, Excel, JSON. Up to 200 MB.</div>
+        </div>
+        <input type="text" id="dataName" placeholder="Dataset name (optional)" aria-label="Dataset name">
+      </div>
+      <div class="job" id="dataJob" hidden></div>
+
+      <div id="dsEmpty" class="empty">Upload your first file to see data health, lenses and reports.</div>
+
+      <div id="dsDetail" hidden>
+        <div class="health">
+          <div class="health-head">
+            <h2 id="dsTitle"></h2>
+            <div class="muted" id="dsPeriod"></div>
+          </div>
+          <div class="strip" id="strip" aria-label="Noise gate result"></div>
+          <div class="strip-legend" id="stripLegend"></div>
+          <dl class="figs" id="figs"></dl>
+        </div>
+
+        <details class="panel" id="cfgPanel">
+          <summary>Analysis settings</summary>
+          <div class="grid2">
+            <label>Focus brand<select id="cfgPrimary"></select><span class="hint">Peers are benchmarked against this brand.</span></label>
+            <label>Brand terms<input id="cfgBrand" placeholder="hdfc, hdfc bank, @hdfc_bank"><span class="hint">Used for relevance. Comma separated.</span></label>
+            <label>Brand-owned handles<input id="cfgOwned" placeholder="HDFC_Bank, HDFCBank_Cares"><span class="hint">Counts as owned voice in vacuum risk.</span></label>
+            <label>Exclude terms (namesakes)<input id="cfgExclude" placeholder="e.g. unrelated brand names"></label>
+            <label>Our key messages<input id="cfgFrame" placeholder="e.g. strong governance, customer first"><span class="hint">Needed for narrative pull-through.</span></label>
+            <label>Actionability threshold θ <output id="cfgThetaOut">0.50</output><input type="range" id="cfgTheta" min="0.2" max="0.9" step="0.05" value="0.5"><span class="hint">Lower keeps more borderline comments.</span></label>
+            <label class="check"><input type="checkbox" id="cfgAi"> Classify a sample with AI (sentiment, emotion, lenses)</label>
+            <label>AI sample size<input type="number" id="cfgAiN" min="50" max="5000" step="50" value="400"></label>
+          </div>
+          <h3>Column mapping</h3>
+          <p class="hint">Columns were matched automatically. Change any that look wrong.</p>
+          <div class="scroll"><table class="map" id="mapTable"></table></div>
+          <div class="actions"><button class="primary" id="rerunBtn">Re-run analysis</button></div>
+        </details>
+
+        <div class="panel">
+          <div class="row-head">
+            <div class="tabs" role="tablist">
+              <button role="tab" data-set="actionable" class="on">Actionable</button>
+              <button role="tab" data-set="excluded">Excluded bin</button>
+            </div>
+            <select id="reasonSel" hidden aria-label="Exclusion reason"></select>
+            <input type="search" id="rowSearch" placeholder="Search text" aria-label="Search rows">
+            <button class="ghost" id="exportBtn">Export CSV</button>
+          </div>
+          <div class="scroll"><table class="rows" id="rowsTable"></table></div>
+          <div class="pager"><button class="ghost" id="prevBtn">Previous</button><span id="pageInfo"></span><button class="ghost" id="nextBtn">Next</button></div>
+        </div>
+
+        <div class="panel">
+          <h3>All datasets</h3>
+          <div class="scroll"><table class="list" id="dsList"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ REPORT -->
+    <section class="view" id="view-report" hidden>
+      <h1>Report</h1>
+      <p class="lede">Every figure is computed from your data; the AI writes the narrative and each number it uses is checked.</p>
+      <div class="panel form">
+        <label>Report layout
+          <select id="repTemplate"><option value="">Reputation risk scan (built in)</option></select>
+        </label>
+        <label>Reader and focus (optional)
+          <textarea id="repFocus" rows="2" placeholder="e.g. For the board risk committee; focus on governance and the class action"></textarea>
+        </label>
+        <div class="actions"><button class="primary" id="genBtn">Create report</button></div>
+        <div class="job" id="repJob" hidden></div>
+      </div>
+      <div class="split">
+        <div class="panel reports-list"><h3>Reports</h3><ul id="repList" class="plain"></ul></div>
+        <div class="viewer" id="viewer" hidden>
+          <div class="viewer-bar">
+            <strong id="repTitle"></strong><span class="who" id="repWho"></span>
+            <span class="qc" id="repQc"></span>
+            <button class="ghost" id="dlHtml">Download HTML</button>
+            <button class="ghost" id="printBtn">Save as PDF</button>
+            <button class="ghost danger" id="delRep">Delete</button>
+          </div>
+          <details class="qc-detail" id="qcDetail"><summary>Numbers check details</summary><div id="qcBody"></div></details>
+          <iframe id="repFrame" title="Report preview"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ TEMPLATE -->
+    <section class="view" id="view-template" hidden>
+      <h1>Report from a sample</h1>
+      <p class="lede">Upload an existing report. Its sections, KPIs and charts are mapped onto the current dataset so you get the same report on new data.</p>
+      <div class="panel form">
+        <div class="upload slim" id="tplDrop" tabindex="0">
+          <div><strong>Sample report</strong> — <label class="linkish">choose a file<input type="file" id="tplFile" accept=".pdf,.pptx,.potx,.docx,.dotx,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp,.txt,.md" hidden></label>
+          <div class="hint">PDF, PowerPoint, Word, Excel or an image of a report.</div><div id="tplFileName" class="hint"></div></div>
+        </div>
+        <label>Template name<input id="tplName" placeholder="e.g. Monthly board scan"></label>
+        <div class="actions"><button class="primary" id="tplBtn">Learn this layout</button></div>
+        <div class="job" id="tplJob" hidden></div>
+      </div>
+      <div class="split">
+        <div class="panel reports-list"><h3>Saved layouts</h3><ul id="tplList" class="plain"></ul></div>
+        <div class="panel" id="tplDetail" hidden>
+          <div class="row-head"><h3 id="tplTitle"></h3>
+            <button class="primary" id="tplUse">Create report with this layout</button>
+            <button class="ghost danger" id="tplDel">Delete</button></div>
+          <p class="muted" id="tplDesc"></p>
+          <ol class="bp" id="tplSections"></ol>
+          <details><summary>Edit layout (JSON)</summary>
+            <textarea id="tplJson" rows="18" class="mono" aria-label="Blueprint JSON"></textarea>
+            <div class="actions"><button class="ghost" id="tplSave">Save changes</button></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ ASK -->
+    <section class="view" id="view-ask" hidden>
+      <div class="ask-head"><h1>Ask the data</h1><button class="ghost" id="clearChat">Clear conversation</button></div>
+      <div class="chat" id="chat" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <form class="composer" id="askForm">
+        <label class="ask-prov">Answer with<select id="askProv" aria-label="AI model for answers"></select></label>
+        <textarea id="askInput" rows="2" placeholder="Ask anything about this dataset — e.g. Which lens drove negative sentiment in August?" aria-label="Question"></textarea>
+        <button class="primary" id="askBtn" type="submit">Ask</button>
+      </form>
+    </section>
+
+    <!-- ============================ SETTINGS -->
+    <section class="view" id="view-settings" hidden>
+      <h1>Settings</h1>
+      <p class="lede">Keys are encrypted on the server and never sent back to the browser.</p>
+      <div class="panel form" id="adminBox" hidden>
+        <label>Admin token<input type="password" id="adminToken" placeholder="Required to save settings"></label>
+      </div>
+      <div class="grid2 settings">
+        <div class="panel form">
+          <h3>Claude (Anthropic)</h3>
+          <label>API key<input type="password" id="sClaudeKey" autocomplete="off"><span class="hint" id="sClaudeState"></span></label>
+          <label>Model<input id="sClaudeModel"></label>
+          <div class="actions"><button class="ghost" data-test="claude">Test connection</button><span class="test-out" id="test-claude"></span></div>
+        </div>
+        <div class="panel form">
+          <h3>Azure OpenAI</h3>
+          <label>Endpoint<input id="sAzEndpoint" placeholder="https://your-resource.openai.azure.com/"></label>
+          <label>Deployment<input id="sAzDeploy"></label>
+          <label>API version<input id="sAzVersion"></label>
+          <label>API key<input type="password" id="sAzKey" autocomplete="off"><span class="hint" id="sAzState"></span></label>
+          <div class="actions"><button class="ghost" data-test="azure_openai">Test connection</button><span class="test-out" id="test-azure_openai"></span></div>
+        </div>
+      </div>
+      <div class="panel form">
+        <h3>Defaults</h3>
+        <label>Default AI provider<select id="sDefault"><option value="claude">Claude</option><option value="azure_openai">Azure OpenAI</option></select></label>
+        <label>Organisation name on reports<input id="sOrg" placeholder="e.g. Devnale Globals · Reputation Intelligence"></label>
+      </div>
+      <div class="panel form">
+        <h3>Perception lenses</h3>
+        <p class="hint">Each lens has a name, matching terms and an action hint. Changes apply when a dataset is re-analysed.</p>
+        <textarea id="sLenses" rows="14" class="mono" aria-label="Lens taxonomy JSON"></textarea>
+        <div class="actions"><button class="ghost" id="resetLenses">Restore defaults</button></div>
+      </div>
+      <div class="actions sticky"><button class="primary" id="saveSettings">Save settings</button><span id="saveOut" class="test-out"></span></div>
+    </section>
+  </div>
+</div>
+<dialog id="provDlg" class="prov-dlg" aria-labelledby="provDlgTitle">
+  <form method="dialog">
+    <h2 id="provDlgTitle">Which AI should write this report?</h2>
+    <p class="muted" id="provDlgSub">Both use the same computed figures; only the writing differs.</p>
+    <div class="prov-opts">
+      <button value="claude" class="prov-opt" data-p="claude"><strong>Claude</strong><span>Anthropic · <b data-model="claude"></b></span><small data-state="claude"></small></button>
+      <button value="azure_openai" class="prov-opt" data-p="azure_openai"><strong>OpenAI</strong><span>Azure OpenAI · <b data-model="azure_openai"></b></span><small data-state="azure_openai"></small></button>
+    </div>
+    <div class="actions"><button value="cancel" class="ghost">Cancel</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
